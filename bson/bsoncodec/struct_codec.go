@@ -265,7 +265,18 @@ func (sc *StructCodec) DecodeValue(r DecodeContext, vr bsonrw.ValueReader, val r
 		return err
 	}
 
+	var currName string
+	var currField reflect.Value
+	var isFieldFailure bool
+	defer func() {
+		if isFieldFailure {
+			fmt.Printf("struct_codec field failure with name `%s`\n", currName)
+			fmt.Printf("struct_codec field failure with kind `%s`\n", currField.Kind().String())
+		}
+	}()
+
 	for {
+		isFieldFailure = false
 		name, vr, err := dr.ReadElement()
 		if err == bsonrw.ErrEOD {
 			break
@@ -273,6 +284,7 @@ func (sc *StructCodec) DecodeValue(r DecodeContext, vr bsonrw.ValueReader, val r
 		if err != nil {
 			return err
 		}
+		currName = name
 
 		fd, exists := sd.fm[name]
 		if !exists {
@@ -329,7 +341,10 @@ func (sc *StructCodec) DecodeValue(r DecodeContext, vr bsonrw.ValueReader, val r
 			innerErr := fmt.Errorf("field %v is not addressable", field)
 			return newDecodeError(fd.name, innerErr)
 		}
+		currField = field
+		isFieldFailure = true
 		field = field.Addr()
+		isFieldFailure = false
 
 		dctx := DecodeContext{Registry: r.Registry, Truncate: fd.truncate || r.Truncate}
 		if fd.decoder == nil {
