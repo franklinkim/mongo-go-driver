@@ -324,6 +324,11 @@ func (sc *StructCodec) DecodeValue(r DecodeContext, vr bsonrw.ValueReader, val r
 		if field.Kind() == reflect.Ptr && field.IsNil() {
 			field.Set(reflect.New(field.Type().Elem()))
 		}
+
+		if !field.CanAddr() {
+			innerErr := fmt.Errorf("field %v is not addressable", field)
+			return newDecodeError(fd.name, innerErr)
+		}
 		field = field.Addr()
 
 		dctx := DecodeContext{Registry: r.Registry, Truncate: fd.truncate || r.Truncate}
